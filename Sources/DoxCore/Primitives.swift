@@ -21,7 +21,7 @@ public struct RGBAColor: Codable, Hashable, Sendable {
         var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.hasPrefix("#") { s.removeFirst() }
         if s.count == 3 { s = s.map { "\($0)\($0)" }.joined() }
-        guard s.count == 6 || s.count == 8, let value = UInt64(s, radix: 16) else { return nil }
+        guard s.count == 6 || s.count == 8, s.allSatisfy(\.isHexDigit), let value = UInt64(s, radix: 16) else { return nil }
         if s.count == 6 {
             self.init(red: Double((value >> 16) & 0xFF) / 255,
                       green: Double((value >> 8) & 0xFF) / 255,
@@ -126,6 +126,11 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
         return s + keyLabel.uppercased()
     }
 
+    /// Same physical key combination, regardless of the recorded label.
+    public func matches(_ other: KeyShortcut) -> Bool {
+        keyCode == other.keyCode && modifiers == other.modifiers
+    }
+
     /// A shortcut without any modifier would hijack normal typing.
     public var isValidGlobalShortcut: Bool { !modifiers.isEmpty }
 }
@@ -135,6 +140,27 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
 extension Comparable {
     public func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+/// Decodes an array, skipping elements that fail to decode instead of failing the whole array.
+struct LossyArray<Element: Decodable>: Decodable {
+    var elements: [Element]
+
+    /// Accepts any JSON value so the container always advances past a bad element.
+    private struct Skip: Decodable { init(from decoder: Decoder) throws {} }
+
+    init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var result: [Element] = []
+        while !container.isAtEnd {
+            if let value = try? container.decode(Element.self) {
+                result.append(value)
+            } else {
+                _ = try? container.decode(Skip.self)
+            }
+        }
+        elements = result
     }
 }
 

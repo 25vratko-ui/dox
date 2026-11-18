@@ -137,9 +137,9 @@ extension AppConfig {
     /// Every shortcut in use, used to warn about conflicts while recording a new one.
     public func shortcutConflicts(for shortcut: KeyShortcut, excludingDock dockID: UUID? = nil) -> [String] {
         var names: [String] = []
-        if toggleAllShortcut == shortcut { names.append("Zobraziť/skryť všetky docky") }
-        if settingsShortcut == shortcut { names.append("Nastavenia") }
-        for d in docks where d.id != dockID && d.shortcut == shortcut { names.append(d.name) }
+        if toggleAllShortcut?.matches(shortcut) == true { names.append("Zobraziť/skryť všetky docky") }
+        if settingsShortcut?.matches(shortcut) == true { names.append("Nastavenia") }
+        for d in docks where d.id != dockID && d.shortcut?.matches(shortcut) == true { names.append(d.name) }
         return names
     }
 }

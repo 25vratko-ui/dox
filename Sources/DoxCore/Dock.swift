@@ -96,13 +96,31 @@ public struct DockItem: Codable, Hashable, Sendable, Identifiable {
         self.folderSort = folderSort
     }
 
+    enum CodingKeys: String, CodingKey {
+        case id, kind, customTitle, customSymbol, tint, folderPresentation, folderSort
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // `kind` is the only truly required field.
+        kind = try c.decode(DockItemKind.self, forKey: .kind)
+        id = c.decode(.id, default: UUID())
+        customTitle = c.decode(.customTitle, default: nil)
+        customSymbol = c.decode(.customSymbol, default: nil)
+        tint = c.decode(.tint, default: nil)
+        folderPresentation = c.decode(.folderPresentation, default: .grid)
+        folderSort = c.decode(.folderSort, default: .name)
+    }
+
     /// Label shown in the dock: custom title, else the file name without extension, else the link host.
     public var displayTitle: String {
         if let t = customTitle, !t.trimmingCharacters(in: .whitespaces).isEmpty { return t }
         switch kind {
-        case .app(let path, _), .folder(let path), .file(let path):
+        case .app(let path, _):
             let last = (path as NSString).lastPathComponent
-            return kind == .file(path: path) ? last : (last as NSString).deletingPathExtension
+            return (last as NSString).deletingPathExtension
+        case .folder(let path), .file(let path):
+            return (path as NSString).lastPathComponent
         case .link(let url):
             if let host = URL(string: url)?.host { return host.replacingOccurrences(of: "www.", with: "") }
             return url
@@ -165,6 +183,22 @@ public struct DockCategory: Codable, Hashable, Sendable, Identifiable {
         self.display = display
         self.isHidden = isHidden
         self.items = items
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, symbol, color, display, isHidden, items
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = c.decode(.id, default: UUID())
+        name = c.decode(.name, default: "Kategória")
+        symbol = c.decode(.symbol, default: "square.grid.2x2")
+        color = c.decode(.color, default: RGBAColor(hex: "#7C8CFF")!)
+        display = c.decode(.display, default: .inline)
+        isHidden = c.decode(.isHidden, default: false)
+        // One malformed item must not wipe the whole category.
+        items = (try? c.decodeIfPresent(LossyArray<DockItem>.self, forKey: .items))?.elements ?? []
     }
 }
 
@@ -324,7 +358,7 @@ public struct DockConfig: Codable, Hashable, Sendable, Identifiable {
         gridLines = c.decode(.gridLines, default: 2)
         appearance = c.decode(.appearance, default: DockAppearance())
         behavior = c.decode(.behavior, default: DockBehavior())
-        categories = c.decode(.categories, default: [])
+        categories = (try? c.decodeIfPresent(LossyArray<DockCategory>.self, forKey: .categories))?.elements ?? []
         shortcut = c.decode(.shortcut, default: nil)
     }
 }

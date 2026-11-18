@@ -5,6 +5,10 @@ on:
     branches: [main, "feature/**"]
   pull_request:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: macos-15
