@@ -208,18 +208,7 @@ struct DockRootView: View {
 
     /// Room needed beyond the body: away from the edge (magnification + labels) and at both ends.
     static func headroom(for dock: DockConfig) -> (away: CGFloat, along: CGFloat) {
-        let a = dock.appearance
-        let mag = CGFloat(DockGeometry.magnificationHeadroom(for: a))
-        let labels: CGFloat
-        switch a.labelMode {
-        case .never: labels = 0
-        case .onHover, .always: labels = dock.edge.isVertical ? 180 : CGFloat(a.labelFontSize) + 18
-        }
-        var along = mag
-        if a.hoverEffect == .magnify {
-            along = max(along, CGFloat((a.magnification - 1) * a.magnificationSpread * a.iconSize / 2))
-        }
-        return (ceil(mag + labels + 4), ceil(along + 8))
+        DockPanelLayout.headroom(for: dock)
     }
 
     /// Negative insets that extend the hover hit area into the magnification headroom.

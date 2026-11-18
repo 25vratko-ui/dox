@@ -16,7 +16,7 @@ final class DoxStore {
     /// Dock selected in the settings sidebar.
     var selectedDockID: UUID?
 
-    @ObservationIgnored private let store: ConfigStore
+    private let store: ConfigStore
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     /// Called after every change; DockManager subscribes to rebuild/re-layout panels.
     @ObservationIgnored var onChange: [(AppConfig) -> Void] = []

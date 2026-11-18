@@ -199,7 +199,9 @@ final class DockManager {
             }
         }
         let liveIDs = Set(config.docks.map(\.id))
-        revealedManualIDs.formIntersection(liveIDs)
+        // Only write observable state when it actually changes (avoids needless view updates).
+        let liveManual = revealedManualIDs.intersection(liveIDs)
+        if liveManual != revealedManualIDs { revealedManualIDs = liveManual }
         lockedDockIDs.formIntersection(liveIDs)
         applyVisibility()
     }

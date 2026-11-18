@@ -52,21 +52,27 @@ final class HotkeyCenter {
     private func installHandlerIfNeeded() {
         guard handlerRef == nil else { return }
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ -> OSStatus in
-            guard let event else { return OSStatus(eventNotHandledErr) }
-            var hotKeyID = EventHotKeyID()
-            let err = GetEventParameter(event,
-                                        EventParamName(kEventParamDirectObject),
-                                        EventParamType(typeEventHotKeyID),
-                                        nil,
-                                        MemoryLayout<EventHotKeyID>.size,
-                                        nil,
-                                        &hotKeyID)
-            guard err == noErr else { return err }
-            let number = hotKeyID.id
-            Task { @MainActor in HotkeyCenter.shared.fire(number) }
-            return noErr
-        }, 1, &spec, nil, &handlerRef)
+        let status = InstallEventHandler(GetApplicationEventTarget(), doxHotKeyEventHandler, 1, &spec, nil, &handlerRef)
         if status != noErr { NSLog("Dox: InstallEventHandler failed (\(status))") }
     }
+}
+
+/// Carbon event callback. A plain global function so it converts to a `@convention(c)` pointer
+/// without capturing any context or inheriting actor isolation.
+private func doxHotKeyEventHandler(_ callRef: EventHandlerCallRef?,
+                                   _ event: EventRef?,
+                                   _ userData: UnsafeMutableRawPointer?) -> OSStatus {
+    guard let event else { return OSStatus(eventNotHandledErr) }
+    var hotKeyID = EventHotKeyID()
+    let err = GetEventParameter(event,
+                                EventParamName(kEventParamDirectObject),
+                                EventParamType(typeEventHotKeyID),
+                                nil,
+                                MemoryLayout<EventHotKeyID>.size,
+                                nil,
+                                &hotKeyID)
+    guard err == noErr else { return err }
+    let number = hotKeyID.id
+    Task { @MainActor in HotkeyCenter.shared.fire(number) }
+    return noErr
 }

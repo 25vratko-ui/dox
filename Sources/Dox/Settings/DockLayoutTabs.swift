@@ -220,7 +220,7 @@ struct DockShortcutTab: View {
                     }
                     SettingsCaption(dock.behavior.autoHide == .manual
                                     ? "Dock je nastavený „Iba skratkou“ – táto skratka ho vyvolá."
-                                    : "Skratka funguje globálne, aj keď je aktívna iná aplikácia. Musí obsahovať aspoň jeden modifikátor (⌘ ⌥ ⌃ ⇧).")
+                                    : "Skratka funguje globálne, aj keď je aktívna iná aplikácia. Musí obsahovať ⌘, ⌥ alebo ⌃ (⇧ je voliteľný).")
                 }
             }
         }

@@ -23,22 +23,7 @@ enum DockDropHandler {
 
         for (offset, provider) in usable.enumerated() {
             let insertAt = index.map { $0 + offset }
-            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
-                || provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    guard let url else { return }
-                    Task { @MainActor in
-                        insert(url: url, dockID: dockID, categoryID: targetID, index: insertAt)
-                    }
-                }
-            } else {
-                _ = provider.loadObject(ofClass: String.self) { text, _ in
-                    guard let text else { return }
-                    Task { @MainActor in
-                        insert(text: text, dockID: dockID, categoryID: targetID, index: insertAt)
-                    }
-                }
-            }
+            load(provider, dockID: dockID, categoryID: targetID, index: insertAt)
         }
         return true
     }
@@ -61,6 +46,27 @@ enum DockDropHandler {
     }
 
     // MARK: Private
+
+    /// Loads a provider's payload. `nonisolated` so the completion closures are not inferred as
+    /// main-actor isolated (NSItemProvider calls them on a background queue).
+    nonisolated private static func load(_ provider: NSItemProvider, dockID: UUID, categoryID: UUID, index: Int?) {
+        if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+            || provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                guard let url else { return }
+                Task { @MainActor in
+                    insert(url: url, dockID: dockID, categoryID: categoryID, index: index)
+                }
+            }
+        } else {
+            _ = provider.loadObject(ofClass: String.self) { text, _ in
+                guard let text else { return }
+                Task { @MainActor in
+                    insert(text: text, dockID: dockID, categoryID: categoryID, index: index)
+                }
+            }
+        }
+    }
 
     private static func canHandle(_ provider: NSItemProvider) -> Bool {
         provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)

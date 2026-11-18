@@ -36,18 +36,9 @@ struct DockPanelContent: View, Equatable {
 
     var body: some View {
         DockRootView(dockID: dockID)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: edge.bodyAlignment)
             .padding(margin)
             .ignoresSafeArea()
-    }
-
-    private var alignment: Alignment {
-        switch edge {
-        case .left: return .leading
-        case .right: return .trailing
-        case .top: return .top
-        case .bottom: return .bottom
-        }
     }
 }
 
@@ -92,18 +83,10 @@ struct DockPanelLayout {
                           width: size.width, height: size.height)
 
         let headroom = CGFloat(DockGeometry.magnificationHeadroom(for: a))
-        let labelRoom: CGFloat
-        switch a.labelMode {
-        case .never: labelRoom = 0
-        case .onHover, .always: labelRoom = edge.isVertical ? 180 : CGFloat(a.labelFontSize) + 18
-        }
-        let away = ceil(headroom + labelRoom + 4)
-        var along = headroom
-        if a.hoverEffect == .magnify {
-            // Total extra length of a magnified line ≈ (mag - 1) * spread * iconSize, half per side.
-            along = max(along, CGFloat((a.magnification - 1) * a.magnificationSpread * a.iconSize / 2))
-        }
-        along = ceil(along + (edge.isVertical ? 8 : 48)) // horizontal hover labels can be wider than icons
+        let room = Self.headroom(for: dock)
+        let away = room.away
+        // Horizontal hover labels can be wider than icons; give them extra slack at both ends.
+        let along = room.along + (edge.isVertical ? 0 : 40)
         let m = ceil(CGFloat(a.shadowRadius) + 6)
 
         let gap: CGFloat
@@ -117,7 +100,9 @@ struct DockPanelLayout {
         bodyRect = body
         margin = m
         frame = Self.extend(body, edge: edge, toward: m, away: away + m, along: along + m)
-        activeRect = Self.extend(body, edge: edge, toward: gap + 1, away: headroom + 4, along: along)
+        // A little larger than DockRootView's hover hit area (headroom + 4) so SwiftUI always sees
+        // the pointer leave (hover `.ended`) before the panel starts ignoring mouse events.
+        activeRect = Self.extend(body, edge: edge, toward: gap + 1, away: headroom + 12, along: along + 8)
         engagedRect = Self.extend(body, edge: edge, toward: gap + 1, away: 6, along: 6)
 
         // Slide so only 2 pt of the body remains inside the visible frame.
@@ -162,6 +147,25 @@ struct DockPanelLayout {
         case .pill: return 22 + a.iconSpacing
         case .label: return a.labelFontSize + 10 + a.iconSpacing
         }
+    }
+
+    /// Room needed beyond the resting body: away from the edge (magnification + labels) and at
+    /// both ends of the dock (growth of a magnified line + slack). Single source of truth, also
+    /// used by `DockRootView` for its hover hit area.
+    static func headroom(for dock: DockConfig) -> (away: CGFloat, along: CGFloat) {
+        let a = dock.appearance
+        let mag = CGFloat(DockGeometry.magnificationHeadroom(for: a))
+        let labels: CGFloat
+        switch a.labelMode {
+        case .never: labels = 0
+        case .onHover, .always: labels = dock.edge.isVertical ? 180 : CGFloat(a.labelFontSize) + 18
+        }
+        var along = mag
+        if a.hoverEffect == .magnify {
+            // Total extra length of a magnified line ≈ (mag - 1) * spread * iconSize, half per side.
+            along = max(along, CGFloat((a.magnification - 1) * a.magnificationSpread * a.iconSize / 2))
+        }
+        return (ceil(mag + labels + 4), ceil(along + 8))
     }
 
     /// Resting body size in points (width × height on screen).

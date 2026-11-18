@@ -129,19 +129,16 @@ struct ShortcutRecorder: View {
         case 53: // Esc
             stopRecording()
             return true
-        case 51, 117 where mods.isEmpty: // ⌫ / ⌦
+        case 51 where mods.isEmpty, 117 where mods.isEmpty: // ⌫ / ⌦ (a `where` only binds to its own pattern)
             shortcut = nil
             stopRecording()
             return true
         default:
             break
         }
-        guard let recorded = KeyShortcut(event: event) else {
-            NSSound.beep()
-            return true
-        }
-        guard recorded.isValidGlobalShortcut else {
-            hint = "Pridaj aspoň jeden modifikátor: ⌘ ⌥ ⌃ alebo ⇧."
+        // `KeyShortcut(event:)` requires ⌘, ⌥ or ⌃ (⇧ alone would hijack normal typing).
+        guard let recorded = KeyShortcut(event: event), recorded.isValidGlobalShortcut else {
+            hint = "Pridaj aspoň jeden modifikátor: ⌘, ⌥ alebo ⌃."
             NSSound.beep()
             return true
         }
